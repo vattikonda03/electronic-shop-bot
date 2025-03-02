@@ -1,25 +1,27 @@
-from flask import Flask
-import psycopg2
-from config import Config
+from flask import Flask, render_template, jsonify, request
+from dotenv import load_dotenv
+import os
+from ecommbot.retrieval_generation import generation
+from ecommbot.ingest import ingestdata
 
 app = Flask(__name__)
-app.config.from_object(Config)
 
-# Connect to the PostgreSQL database
-def get_db_connection():
-    conn = psycopg2.connect(app.config['DATABASE_URI'])
-    print(conn)
-    return conn
+load_dotenv()
 
-@app.route('/')
+vstore=ingestdata("done")
+chain=generation(vstore)
+
+@app.route("/")
 def index():
-    conn = get_db_connection()
-    cursor = conn.cursor()
-    cursor.execute('SELECT * FROM products') 
-    records = cursor.fetchall()
-    conn.close()
-    
-    return f"Database records: {records}"
+    return render_template('chat.html')
 
-if __name__ == "__main__":
-    app.run(debug=True)
+@app.route("/get", methods=["GET", "POST"])
+def chat():
+    msg = request.form["msg"]
+    input = msg
+    result=chain.invoke(input)
+    print("Response : ", result)
+    return str(result)
+
+if __name__ == '__main__':
+    app.run(debug= True)
